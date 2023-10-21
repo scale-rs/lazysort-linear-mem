@@ -13,18 +13,23 @@ use core::mem;
 /// Using [`alloc::collections::vec_deque::VecDeque`] would make the implementation easier, but less
 /// efficient (because its lower bound is not necessarily `0`, but movable around the ring buffer.
 /// Also, [`Vec`] is more common.
-pub type Storage<T> = [Vec<T>; 2];
-pub type InputAndStorage<T> = (Vec<T>, Storage<T>);
+pub type StorePair<T> = [Vec<T>; 2];
+type InputAndStorePair<T> = (Vec<T>, StorePair<T>);
+/// This could be "implemented" to be the same as [`StorePair`]. But by being different we avoid
+/// mistaking them (and we don't need to introduce any newtype wrapper).
+type InputAndSingleStore<T> = (Vec<T>, Vec<T>);
 
-fn debug_assert_all_empty<T>(storage: &Storage<T>) {
-    debug_assert!(storage[0].is_empty());
-    debug_assert!(storage[1].is_empty());
+#[inline(always)]
+fn debug_assert_empty<T>(store_pair: &StorePair<T>) {
+    debug_assert!(store_pair[0].is_empty());
+    debug_assert!(store_pair[1].is_empty());
 }
 
 /// Assert that all [`Vec`] in `storage` have sufficient capacity (equal to, or greater than, `capacity`).
-fn debug_assert_all_capacity<T>(storage: &Storage<T>, capacity: usize) {
-    debug_assert!(storage[0].capacity() >= capacity);
-    debug_assert!(storage[1].capacity() >= capacity);
+#[inline(always)]
+fn debug_assert_capacity<T>(store_pair: &StorePair<T>, capacity: usize) {
+    debug_assert!(store_pair[0].capacity() >= capacity);
+    debug_assert!(store_pair[1].capacity() >= capacity);
 }
 
 ///
@@ -40,126 +45,109 @@ fn debug_assert_all_capacity<T>(storage: &Storage<T>, capacity: usize) {
 // Not part of the contract/API: This starts removing items (the pivot) from `input` from its end,
 // to avoid shuffling.
 #[must_use]
-pub fn qsort<T, CONSUME>(
+pub fn qsort_idx<T, CONSUME>(
     input: Vec<T>,
     consume: &CONSUME,
-    storage: Storage<T>,
-) -> InputAndStorage<T>
+    store_pair: StorePair<T>,
+) -> InputAndStorePair<T>
 where
     T: Ord,
     CONSUME: Fn(usize, T) -> bool,
 {
-    debug_assert_all_empty(&storage);
-    debug_assert_all_capacity(&storage, input.len());
+    debug_assert_empty(&store_pair);
+    let input_len = input.len();
+    debug_assert_capacity(&store_pair, input_len);
 
-    let mut next_out_seq_idx = 0usize;
-    part(input, consume, &mut next_out_seq_idx, storage)
+    let mut next_out_idx = 0usize;
+    let (input, store_pair) = part_idx(input, consume, &mut next_out_idx, store_pair);
+    debug_assert_eq!(
+        next_out_idx + input.len() + store_pair[0].len() + store_pair[1].len(),
+        input_len
+    );
+    (input, store_pair)
 }
 
 /// - `next_out_seq_idx`: 0-based index of the next output item (increasing by one per each output
 ///    item but no correlation to its position in `input`).
 #[must_use]
-fn part<T, CONSUME>(
+fn part_idx<T, CONSUME>(
     mut input: Vec<T>,
     consume: &CONSUME,
-    next_out_seq_idx: &mut usize,
-    storage: Storage<T>,
-) -> InputAndStorage<T>
+    next_out_idx: &mut usize,
+    empty_store_pair: StorePair<T>,
+) -> InputAndStorePair<T>
 where
     T: Ord,
     CONSUME: Fn(usize, T) -> bool,
 {
-    debug_assert_all_empty(&storage);
-    debug_assert_all_capacity(&storage, input.len());
+    debug_assert_empty(&empty_store_pair);
+    debug_assert_capacity(&empty_store_pair, input.len());
     if input.is_empty() {
-        return (input, storage);
+        return (input, empty_store_pair);
     }
     let pivot = input.pop().unwrap();
-    let [mut lower, mut greater_equal] = storage;
+    let [mut lower_side, mut greater_equal_side] = empty_store_pair;
 
     while !input.is_empty() {
         let value = input.pop().unwrap();
         if value < pivot {
-            lower.push(value);
+            lower_side.push(value);
         } else {
-            greater_equal.push(value);
+            greater_equal_side.push(value);
         }
     }
     // We reuse `input` and `lower`, consuming them, then returning (moving) them back.
-    let (input, lower) = sub_part(input, lower, consume, next_out_seq_idx);
-    /*let (input, lower) = match lower.len() {
-        0 => (input, lower),
-        1 => {
-            consume(*next_out_seq_idx, lower.pop().unwrap());
-            *next_out_seq_idx += 1;
-            (input, lower)
-        }
-        2 => {
-            // Let's save splitting & reconstructing the Storage vectors: sort 2 items manually.
-            let mut one = lower.pop().unwrap();
-            let mut two = lower.pop().unwrap();
-            if one > two {
-                mem::swap(&mut one, &mut two);
-            }
-            consume(*next_out_seq_idx, one);
-            *next_out_seq_idx += 1;
-            consume(*next_out_seq_idx, two);
-            *next_out_seq_idx += 1;
-            (input, lower)
-        }
-        lower_len => {
-            let (storage, original_capacity) = unsafe { split_vec(input, lower_len, lower_len) };
-            let (lower, storage) = part(lower, consume, next_out_seq_idx, storage);
-            (unsafe { join_vecs(storage, original_capacity) }, lower)
-        }
-    };*/
-    consume(*next_out_seq_idx, pivot);
-    *next_out_seq_idx += 1;
-    let (input, greater_equal) = sub_part(input, greater_equal, consume, next_out_seq_idx);
+    let (input, lower) = part_one_side(input, lower_side, consume, next_out_idx);
+    consume(*next_out_idx, pivot);
+    *next_out_idx += 1;
+    let (input, greater_equal) = part_one_side(input, greater_equal_side, consume, next_out_idx);
     (input, [lower, greater_equal])
 }
 
 #[must_use]
-fn sub_part<T, CONSUME>(
-    mut input: Vec<T>,
-    mut sub: Vec<T>,
+fn part_one_side<T, CONSUME>(
+    empty_input: Vec<T>,
+    mut side: Vec<T>,
     consume: &CONSUME,
-    next_out_seq_idx: &mut usize,
-) -> (Vec<T>, Vec<T>)
+    next_out_idx: &mut usize,
+) -> InputAndSingleStore<T>
 where
     T: Ord,
     CONSUME: Fn(usize, T) -> bool,
 {
-    debug_assert!(input.is_empty());
+    debug_assert!(empty_input.is_empty());
     // We reuse `input`: splitting it (by consuming it), then receiving it back in parts,
     // re-constructing it and returning (moving) it back.
     //
     // We also consume, receive & return `sub`.
-    match sub.len() {
-        0 => (input, sub),
+    match side.len() {
+        0 => (empty_input, side),
         1 => {
-            consume(*next_out_seq_idx, sub.pop().unwrap());
-            *next_out_seq_idx += 1;
-            (input, sub)
+            consume(*next_out_idx, side.pop().unwrap());
+            *next_out_idx += 1;
+            (empty_input, side)
         }
         2 => {
             // Let's save splitting & reconstructing the Storage vectors: sort 2 items manually.
-            let mut one = sub.pop().unwrap();
-            let mut two = sub.pop().unwrap();
+            let mut one = side.pop().unwrap();
+            let mut two = side.pop().unwrap();
             if one > two {
                 mem::swap(&mut one, &mut two);
             }
-            consume(*next_out_seq_idx, one);
-            *next_out_seq_idx += 1;
-            consume(*next_out_seq_idx, two);
-            *next_out_seq_idx += 1;
-            (input, sub)
+            consume(*next_out_idx, one);
+            *next_out_idx += 1;
+            consume(*next_out_idx, two);
+            *next_out_idx += 1;
+            (empty_input, side)
         }
-        sub_len => {
-            let (storage, original_capacity) = unsafe { split_vec(input, sub_len, sub_len) };
-            let (sub, storage) = part(sub, consume, next_out_seq_idx, storage);
-            debug_assert_eq!(sub.len(), sub_len);
-            (unsafe { join_vecs(storage, original_capacity) }, sub)
+        side_len => {
+            let original_capacity = empty_input.capacity();
+            let store_pair = unsafe { split_vec(empty_input, side_len, side_len) };
+            let (side, store_pair) = part_idx(side, consume, next_out_idx, store_pair);
+            debug_assert_eq!(side.len(), side_len);
+            let input = unsafe { join_vecs(store_pair) };
+            debug_assert_eq!(input.capacity(), original_capacity);
+            (input, side)
         }
     }
 }
@@ -183,17 +171,20 @@ unsafe fn split_vec<T>(
     input: Vec<T>,
     capacity_one: usize,
     capacity_two: usize,
-) -> (Storage<T>, usize) {
+) -> StorePair<T> {
     debug_assert!(capacity_one + capacity_two <= input.capacity());
-    loop {}
+    let (ptr, len, cap) = input.into_raw_parts();
+
+    todo!()
 }
 
 /// Reconstruct a [`Vec`] from two split "subvectors". You must use this before you want to
 /// [`Drop::drop`] it (them) automatically, or before you pass it outside this module (for re-use).
 ///
 /// Only pass two adjacent [`Vec`]-tors returned from the same call to [`split_vec`].
-unsafe fn join_vecs<T>(vecs: Storage<T>, original_capacity: usize) -> Vec<T> {
-    loop {}
+unsafe fn join_vecs<T>(vecs: StorePair<T>) -> Vec<T> {
+    todo!()
+    //result
 }
 
 pub fn qsort_len<T: Copy, S: Fn(usize, T)>(items: &mut [T], store: S, len: usize) {}
