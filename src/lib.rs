@@ -14,10 +14,18 @@ use core::mem;
 /// efficient (because its lower bound is not necessarily `0`, but movable around the ring buffer.
 /// Also, [`Vec`] is more common.
 pub type StorePair<T> = [Vec<T>; 2];
-type InputAndStorePair<T> = (Vec<T>, StorePair<T>);
+
+/// The [`bool`] part (completion) indicates whether we've handled (sorted & consumed) all items.
+/// For example, in sorting methods that take a closure which returns [`bool`] indicating whether to
+/// continue (sorting & consuming), completion is true if such a closure returns `true` for all
+/// items.
+type InputStorePairCompletion<T> = (Vec<T>, StorePair<T>, bool);
+
 /// This could be "implemented" to be the same as [`StorePair`]. But by being different we avoid
 /// mistaking them (and we don't need to introduce any newtype wrapper).
-type InputAndStoreSingle<T> = (Vec<T>, Vec<T>);
+///
+/// For the [`bool`] part (completion) see [`InputStorePairCompletion`].
+type InputStoreSingleCompletion<T> = (Vec<T>, Vec<T>, bool);
 
 /// For ensuring we use a result from closures.
 #[must_use]
@@ -65,7 +73,7 @@ pub fn qsort_idx<T, CONSUME>(
     input: Vec<T>,
     consume: &CONSUME,
     store_pair: StorePair<T>,
-) -> InputAndStorePair<T>
+) -> InputStorePairCompletion<T>
 where
     T: Ord,
     CONSUME: Fn(usize, T) -> bool,
@@ -77,12 +85,12 @@ where
 
     let mut next_out_idx = 0usize;
     let consume = make_consume_closure_must_use_result(consume);
-    let (input, store_pair) = part_idx(input, &consume, &mut next_out_idx, store_pair);
+    let (input, store_pair, completion) = part_idx(input, &consume, &mut next_out_idx, store_pair);
     debug_assert_eq!(
         next_out_idx + input.len() + store_pair[0].len() + store_pair[1].len(),
         input_len
     );
-    (input, store_pair)
+    (input, store_pair, completion)
 }
 
 /// - `next_out_seq_idx`: 0-based index of the next output item (increasing by one per each output
@@ -93,7 +101,7 @@ fn part_idx<T, CONSUME_MUST_USE_RESULT>(
     consume: &CONSUME_MUST_USE_RESULT,
     next_out_idx: &mut usize,
     empty_store_pair: StorePair<T>,
-) -> InputAndStorePair<T>
+) -> InputStorePairCompletion<T>
 where
     T: Ord,
     CONSUME_MUST_USE_RESULT: Fn(usize, T) -> MustUse<bool>,
@@ -101,7 +109,7 @@ where
     debug_assert_empty(&empty_store_pair);
     debug_assert_capacity(&empty_store_pair, input.len());
     if input.is_empty() {
-        return (input, empty_store_pair);
+        return (input, empty_store_pair, true);
     }
     let pivot = input.pop().unwrap();
     let [mut lower_side, mut greater_equal_side] = empty_store_pair;
@@ -117,12 +125,13 @@ where
     debug_assert!(input.is_empty());
 
     // We reuse `input` and `lower`, consuming them, then returning (moving) them back.
-    let (input, lower_side) = part_one_side(input, lower_side, consume, next_out_idx);
+    let (input, lower_side, completion) = part_one_side(input, lower_side, consume, next_out_idx);
     // @TODO is `input` guaranteed to be empty?
     consume(*next_out_idx, pivot);
     *next_out_idx += 1;
-    let (input, greater_equal) = part_one_side(input, greater_equal_side, consume, next_out_idx);
-    (input, [lower_side, greater_equal])
+    let (input, greater_equal_side, completion) =
+        part_one_side(input, greater_equal_side, consume, next_out_idx);
+    (input, [lower_side, greater_equal_side], completion)
 }
 
 #[must_use]
@@ -131,7 +140,7 @@ fn part_one_side<T, CONSUME_MUST_USE_RESULT>(
     mut side: Vec<T>,
     consume: &CONSUME_MUST_USE_RESULT,
     next_out_idx: &mut usize,
-) -> InputAndStoreSingle<T>
+) -> InputStoreSingleCompletion<T>
 where
     T: Ord,
     CONSUME_MUST_USE_RESULT: Fn(usize, T) -> MustUse<bool>,
@@ -142,11 +151,11 @@ where
     //
     // We also consume, receive & return `sub`.
     match side.len() {
-        0 => (empty_input, side),
+        0 => (empty_input, side, true),
         1 => {
             consume(*next_out_idx, side.pop().unwrap());
             *next_out_idx += 1;
-            (empty_input, side)
+            (empty_input, side, true)
         }
         2 => {
             // Let's save splitting & reconstructing the Storage vectors: sort 2 items manually.
@@ -159,20 +168,20 @@ where
             *next_out_idx += 1;
             consume(*next_out_idx, two);
             *next_out_idx += 1;
-            (empty_input, side)
+            (empty_input, side, true)
         }
         side_len => {
             let input_original_capacity = empty_input.capacity();
 
             // Set the capacity to any possible maximum, but not more - so that we catch any errors a.s.a.p.
             let store_pair = unsafe { split_vec(empty_input, side_len, side_len) };
-            let (side, store_pair) = part_idx(side, consume, next_out_idx, store_pair);
+            let (side, store_pair, completion) = part_idx(side, consume, next_out_idx, store_pair);
             debug_assert_eq!(side.len(), side_len); // ???
 
             let input = unsafe { join_vecs(store_pair) };
 
             debug_assert_eq!(input.capacity(), input_original_capacity);
-            (input, side)
+            (input, side, completion)
         }
     }
 }
