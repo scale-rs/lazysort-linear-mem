@@ -75,7 +75,8 @@ struct CrossVecPair<T>(Vec<T>, Vec<T>);
 /// way
 /// - otherwise its [`Drop::drop()`] will panic.
 struct CrossVecTempTakePair<'c, 'vds, T> {
-    /// Always [Some]. ([None] is used only during [Drop::drop].)
+    /// Always [Some]. ([None] is used only after [`CrossVecTempTakePair::forget()`], that is
+    /// for/right before [Drop::drop].)
     ///
     /// The two [`Vec`]s correspond to [`VecDequeSplit::front`] & [`VecDequeSplit::back`],
     /// respectively.
@@ -251,6 +252,7 @@ where
 ///
 /// There are no guarantees about position/order of any items left in the result [`Storage`], other
 /// that they are all items (and only those items) that haven't been consumed (passed to `consume`).
+//
 // Not part of the contract/API: This starts removing items (the pivot) from `input` from its end,
 // to avoid shuffling.
 #[must_use]
@@ -269,9 +271,9 @@ where
     debug_assert_capacity(&store_pair, input_initial_len);
 
     let mut consumed_so_far = 0usize;
-    let consume = make_consume_closure_must_use_result(consume);
+    let mut consume = make_consume_closure_must_use_result(consume);
     let ((input, store_pair), complete) =
-        part_store_pair_idx(input, store_pair, &consume, &mut consumed_so_far);
+        part_store_pair_idx(input, store_pair, &mut consume, &mut consumed_so_far);
     if complete {
         debug_assert!(input.is_empty());
         debug_assert_empty(&store_pair);
@@ -292,7 +294,7 @@ where
 fn part_store_pair_idx<T, CONSUME>(
     mut input: Vec<T>,
     store_pair: StorePair<T>,
-    consume: &CONSUME,
+    consume: &mut CONSUME,
     consumed_so_far: &mut usize,
 ) -> InputStorePairCompletion<T>
 where
@@ -351,7 +353,7 @@ where
 fn part_store_single_idx<T, CONSUME>(
     mut input: Vec<T>,
     store_single: StoreSingle<T>,
-    consume: &CONSUME,
+    mut consume: &mut CONSUME,
     consumed_so_far: &mut usize,
 ) -> InputStoreSingleCompletion<T>
 where
