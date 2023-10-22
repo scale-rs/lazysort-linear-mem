@@ -46,3 +46,4 @@ pre-release-replacements = [
 
 [features]
 default = []
+alloc_guard = []

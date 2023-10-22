@@ -16,6 +16,17 @@ ergonomics of API.  You can do this by opening an [issue][new issue]. It's
 helpful to look through [all issues][all issues] in case its already being
 talked about.
 
+## Development
+
+Suggest
+
+- with `stable` Rust:
+  - `cargo check --tests`
+  - `cargo check --tests --release`
+- with `nightly` Rust:
+  - `cargo check --tests --features alloc_guard`
+  - `cargo check --tests --features alloc_guard --release`
+
 ## Pull Requests
 
 Looking for an idea? Check our [issues][issues]. If it's look more open ended,
