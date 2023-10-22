@@ -36,11 +36,13 @@ impl<'a, T> VecDequeSplit<'a, T> {
         // <https://doc.rust-lang.org/nightly/alloc/collections/vec_deque/struct.VecDeque.html#method.pop_back>)
         // they do NOT ensure/reset the indices to 0 (to be contiguous). So we ensure it.
         vec_deque.make_contiguous();
-        Self {
+        let result = Self {
             vec_deque,
             front: 0,
             back: 0,
-        }
+        };
+        result.debug_assert_consistent();
+        result
     }
 
     fn push_front(&mut self, value: T) {
@@ -57,6 +59,12 @@ impl<'a, T> VecDequeSplit<'a, T> {
     #[inline(always)]
     fn debug_assert_consistent(&self) {
         debug_assert_eq!(self.front + self.back, self.vec_deque.len());
+        debug_assert!({
+            let (front, back) = self.vec_deque.as_slices();
+            debug_assert_eq!(self.front, front.len());
+            debug_assert_eq!(self.back, back.len());
+            true
+        });
     }
 }
 
@@ -134,6 +142,9 @@ impl<'c, 'vds, T> CrossVecTempTakePair<'c, 'vds, T> {
         self.pair = Some(pair);
     }
 
+    /// Forget the pair, but do NOT CONSUME this [`CrossVecTempTakePair`] instance.
+    ///
+    /// Internal. Do NOT call it from outside of [`CrossVecTempTakePair`].
     fn _forget_pair(&mut self) {
         debug_assert!(!self.temp_taken, "'Temporarily taken.'");
         let pair = self.pair.take();
