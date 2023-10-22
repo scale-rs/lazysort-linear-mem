@@ -2,10 +2,7 @@
 #![feature(vec_into_raw_parts)]
 extern crate alloc;
 
-use alloc::{
-    collections::{vec_deque, VecDeque},
-    vec::Vec,
-};
+use alloc::{collections::VecDeque, vec::Vec};
 use core::{
     marker::PhantomData,
     mem,
@@ -233,10 +230,10 @@ fn debug_assert_capacity<T>(store_pair: &StorePair<T>, capacity: usize) {
 /// Generate a new closure whose result is `#[must_use]`. Should be zero-cost.
 #[inline(always)]
 fn make_consume_closure_must_use_result<T, CONSUME>(
-    consume: CONSUME,
-) -> impl Fn(usize, T) -> MustUse<bool>
+    mut consume: CONSUME,
+) -> impl FnMut(usize, T) -> MustUse<bool>
 where
-    CONSUME: Fn(usize, T) -> bool,
+    CONSUME: FnMut(usize, T) -> bool,
 {
     move |idx, value| MustUse(consume(idx, value))
 }
@@ -260,11 +257,11 @@ where
 pub fn qsort_idx<T, CONSUME>(
     input: Vec<T>,
     store_pair: StorePair<T>,
-    consume: &CONSUME,
+    consume: &mut CONSUME,
 ) -> InputStorePair<T>
 where
     T: Ord,
-    CONSUME: Fn(usize, T) -> bool,
+    CONSUME: FnMut(usize, T) -> bool,
 {
     //consume_must_use_result::<T, _>(unsafe { mem::transmute(consume) });
     debug_assert_empty(&store_pair);
@@ -300,7 +297,7 @@ fn part_store_pair_idx<T, CONSUME>(
 ) -> InputStorePairCompletion<T>
 where
     T: Ord,
-    CONSUME: Fn(usize, T) -> MustUse<bool>,
+    CONSUME: FnMut(usize, T) -> MustUse<bool>,
 {
     debug_assert_empty(&store_pair);
     debug_assert_capacity(&store_pair, input.len());
@@ -359,7 +356,7 @@ fn part_store_single_idx<T, CONSUME>(
 ) -> InputStoreSingleCompletion<T>
 where
     T: Ord,
-    CONSUME: Fn(usize, T) -> MustUse<bool>,
+    CONSUME: FnMut(usize, T) -> MustUse<bool>,
 {
     debug_assert!(store_single.is_empty());
     // We reuse `input`: splitting it (by consuming it), then receiving it back in parts,
@@ -448,23 +445,23 @@ unsafe fn join_vecs<T>(vecs: StorePair<T>) -> Vec<T> {
     //result
 }
 /*
-pub fn qsort_len<T: Copy, S: Fn(usize, T)>(items: &mut [T], store: S, len: usize) {}
+pub fn qsort_len<T: Copy, S: FnMut(usize, T)>(items: &mut [T], store: S, len: usize) {}
 
-pub fn qsort_sub<T: Copy, S: Fn(usize, T), THRESHOLD: Fn(T, T) -> T>(
+pub fn qsort_sub<T: Copy, S: FnMut(usize, T), THRESHOLD: FnMut(T, T) -> T>(
     items: &mut [T],
     store: S,
     threshold: THRESHOLD,
 ) {
 }
 
-pub fn qsort_with_acc<T: Copy, ACU, S: Fn(usize, T), ACCUMULATE: Fn(ACU, T) -> ACU>(
+pub fn qsort_with_acc<T: Copy, ACU, S: FnMut(usize, T), ACCUMULATE: FnMut(ACU, T) -> ACU>(
     items: &mut [T],
     store: S,
     accumulate: ACCUMULATE,
 ) {
 }
 
-fn part_and_collect<T: Copy, COLL, C: Fn(COLL, T) -> COLL, F: Fn(usize, T) -> bool>(
+fn part_and_collect<T: Copy, COLL, C: FnMut(COLL, T) -> COLL, F: FnMut(usize, T) -> bool>(
     items: &mut [T],
     f: F,
     next_result_item_idx: usize,
