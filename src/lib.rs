@@ -1,12 +1,14 @@
 #![no_std]
 #![cfg_attr(feature = "_internal_use_allocator_api", feature(allocator_api))]
 #![allow(incomplete_features)]
-#![allow(type_alias_bounds)]
+#![cfg_attr(not(feature = "nightly_lazy_type_alias"), allow(type_alias_bounds))]
 #![cfg_attr(feature = "nightly_lazy_type_alias", feature(lazy_type_alias))]
 
 extern crate alloc;
 
-use alloc::vec::Vec;
+use alloc::vec::Vec; //TODO calloc
+use alloc::vec::Vec as StdVec;
+use calloc::{Allocator, Global};
 use core::{mem, ops::Deref};
 //use cross;
 use lifos::FixedDequeLifos;
@@ -32,6 +34,9 @@ mod test {
 pub type StorePair<T> = [Vec<T>; 2];
 
 pub type InputStorePair<T> = (Vec<T>, StorePair<T>);
+#[cfg(feature = "nightly_accept_custom_alloc")]
+pub type OutputPair<T, A: Allocator = Global> = (Vec<T>, Storage<T, A>);
+#[cfg(not(feature = "nightly_accept_custom_alloc"))]
 pub type OutputPair<T> = (Vec<T>, Storage<T>);
 
 /// The [`bool`] part (complete) indicates whether we've handled (sorted & consumed) all items.
@@ -92,11 +97,66 @@ where
     move |idx, value| MustUse(consume(idx, value))
 }
 
-///
-#[non_exhaustive]
+// ------ Storage
+#[cfg(feature = "nightly_accept_custom_alloc")]
+/// Storage, ideally to be re-used by the client.
+#[must_use]
 #[repr(transparent)]
-pub struct Storage<T>(pub Vec<T>);
+pub struct Storage<T, A: Allocator = Global>(StdVec<T, A>);
 
+#[cfg(feature = "nightly_accept_custom_alloc")]
+impl<T, A: Allocator> From<StdVec<T, A>> for Storage<T, A> {
+    fn from(v: StdVec<T, A>) -> Self {
+        Self(v)
+    }
+}
+
+#[cfg(feature = "nightly_accept_custom_alloc")]
+impl<T, A: Allocator> Storage<T, A> {
+    pub fn into_vec(self) -> StdVec<T, A> {
+        self.0
+    }
+}
+//--
+
+#[cfg(not(feature = "nightly_accept_custom_alloc"))]
+/// Storage, ideally to be re-used by the client.
+#[must_use]
+#[repr(transparent)]
+pub struct Storage<T>(StdVec<T>);
+
+#[cfg(not(feature = "nightly_accept_custom_alloc"))]
+impl<T> From<StdVec<T>> for Storage<T> {
+    fn from(v: StdVec<T>) -> Self {
+        Self(v)
+    }
+}
+
+#[cfg(not(feature = "nightly_accept_custom_alloc"))]
+impl<T> Storage<T> {
+    pub fn into_vec(self) -> StdVec<T> {
+        self.0
+    }
+}
+// ---------- end of: Storage
+
+//  ---------- qsort_idx(..)
+#[cfg(feature = "nightly_accept_custom_alloc")]
+#[must_use]
+pub fn qsort_idx_NEW<T, CONSUME, A: Allocator>(
+    input: Vec<T, A>,
+    storage: Storage<T, A>,
+    consume: &mut CONSUME,
+) -> OutputPair<T, A>
+where
+    T: Ord,
+    CONSUME: FnMut(usize, T) -> bool,
+{
+    todo!()
+}
+//  --
+
+#[cfg(not(feature = "nightly_accept_custom_alloc"))]
 #[must_use]
 pub fn qsort_idx_NEW<T, CONSUME>(
     input: Vec<T>,
@@ -109,6 +169,7 @@ where
 {
     todo!()
 }
+//  ---------- end of: qsort_idx(..)
 
 ///
 /// - `consume`: A handler (consumer) closure to consume the items in sorted order, one by one. It
@@ -344,6 +405,5 @@ fn part_and_collect<T: Copy, COLL, C: FnMut(COLL, T) -> COLL, F: FnMut(usize, T)
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 }
 */

@@ -20,6 +20,7 @@ use core::ops::{Deref, DerefMut};
 //-------- Allocator, Global
 #[cfg(feature = "_internal_use_allocator_api")]
 pub use alloc::alloc::{Allocator, Global};
+// --
 
 // TODO Consider having a separate module file for non-nightly, and then apply `#[cfg(...)]` above
 // the `mod` keyword only.
@@ -32,16 +33,19 @@ pub struct Global {}
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 impl Allocator for Global {}
-//--------
+// TODO Drop - here or elsewhere?
+//-------- end of: Allocator, Global
 
 //-------- Vec
 // `A: Allocator` is possible (and required) here with #![feature(lazy_type_alias)] ONLY:
 #[cfg(feature = "_internal_use_allocator_api")]
 pub type Vec<T, A: Allocator = Global> = StdVec<T, A>;
+// --
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 #[repr(transparent)]
 pub struct Vec<T, A: Allocator = Global>(StdVec<T>, PhantomData<A>);
+
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 impl<T> Deref for Vec<T> {
     type Target = StdVec<T>;
@@ -50,37 +54,66 @@ impl<T> Deref for Vec<T> {
         &self.0
     }
 }
+
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 impl<T> DerefMut for Vec<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
-//--------
+
+// TODO impl<T> From<VecDeque<T>> for Vec<T> {}
+//-------- end of: Vec
 
 //-------- VecDeque
 // `A: Allocator` is possible (and required) here with #![feature(lazy_type_alias)] ONLY:
 #[cfg(feature = "_internal_use_allocator_api")]
 pub type VecDeque<T, A: Allocator = Global> = StdVecDeque<T, A>;
+// --
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 #[repr(transparent)]
 pub struct VecDeque<T, A: Allocator = Global>(StdVecDeque<T>, PhantomData<A>);
+
+// TODO if never used in release, then enable it for
+//
+// #[cfg(all(not(feature = "_internal_use_allocator_api"), test))]
+//
+// and have with_capacity(...) only.
 #[cfg(not(feature = "_internal_use_allocator_api"))]
-impl<T> Deref for VecDeque<T> {
+impl<T, A: Allocator> VecDeque<T, A> {
+    pub fn new_in(_alloc: A) -> Self {
+        Self(StdVecDeque::new(), PhantomData)
+    }
+    pub fn new() -> Self {
+        Self(StdVecDeque::new(), PhantomData)
+    }
+
+    pub fn with_capacity_in(capacity: usize, _alloc: A) -> Self {
+        Self(StdVecDeque::with_capacity(capacity), PhantomData)
+    }
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(StdVecDeque::with_capacity(capacity), PhantomData)
+    }
+}
+
+#[cfg(not(feature = "_internal_use_allocator_api"))]
+impl<T, A: Allocator> Deref for VecDeque<T, A> {
     type Target = StdVecDeque<T>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
+
 #[cfg(not(feature = "_internal_use_allocator_api"))]
-impl<T> DerefMut for VecDeque<T> {
+impl<T, A: Allocator> DerefMut for VecDeque<T, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
-//--------
+// TODO impl<T> From<Vec<T>> for VecDeque<T> {}
+//-------- end of: VecDeque
 
 // TODO REPORT
 //pub type Vec<T, #[cfg(feature = "_internal_use_allocator_api")] A = Global> = StdVec<T>;

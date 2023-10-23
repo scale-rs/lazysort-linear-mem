@@ -1,4 +1,4 @@
-use super::{CrossVec, CrossVecPair, CrossVecPairGuardState};
+use crate::cross::{CrossVec, CrossVecPair, CrossVecPairGuardState};
 
 use alloc::vec;
 

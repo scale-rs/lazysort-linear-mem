@@ -1,8 +1,11 @@
 use alloc::collections::VecDeque;
 
-/// A contract on top of [`VecDeque`]. It (logically) keeps two LIFOs (Last-In First-Out queues),
-/// growing in the opposite directions toward each other. Similar to how stack & heap grow toward
-/// each other (in a single-threaded process/OS with no virtual memory, but with physical addressing
+#[cfg(test)]
+mod lifos_tests;
+
+/// A contract on top of [`VecDeque`]. It (logically) keeps two LIFO (Last-In First-Out) queues,
+/// growing in the opposite directions toward each other. (Similar to how stack & heap grow toward
+/// each other in a single-threaded process/OS with no virtual memory, but with physical addressing
 /// only):
 /// ```
 /// /*
@@ -17,7 +20,9 @@ use alloc::collections::VecDeque;
 /// /* not crossed */
 /// ```
 ///
-/// LIMITED so as NOT to expand/re-allocate. It's the responsibility of the client!
+/// LIMITED so as NOT to expand/re-allocate. Keeping within the bounds is the responsibility of the
+/// client - otherwise [`FixedDequeLifos::push_front()`] and [`FixedDequeLifos::push_front()`] will
+/// panic (even in release)!
 ///
 /// This *could* take [`VecDeque`] by mutable reference. But, it takes it owned (moved) instead -
 /// because that suits [`CrossVecPairOrigin`].
@@ -35,6 +40,7 @@ pub struct FixedDequeLifos<T> {
 // - change to: From Vec<T>, AND
 // - accept optional Alloc param.
 // - MAybeUninit until the first LEFT item is pushed in; then transmute that temporary MaybeUinit.
+/// This requires the backing [`VecDeque`] to be (initially) EMPTY.
 impl<T> From<VecDeque<T>> for FixedDequeLifos<T> {
     /// As per
     /// <https://doc.rust-lang.org/nightly/alloc/collections/vec_deque/struct.VecDeque.html#impl-From%3CVec%3CT,+A%3E%3E-for-VecDeque%3CT,+A%3E>:
@@ -88,7 +94,7 @@ impl<T> FixedDequeLifos<T> {
     pub fn push_front(&mut self, value: T) {
         self.debug_assert_consistent();
         self.debug_assert_contiguous();
-        self.debug_assert_capacity_for_one();
+        self.assert_capacity_for_one();
         self.vec_deque.push_front(value);
         self.front += 1;
         self.debug_assert_consistent();
@@ -97,7 +103,7 @@ impl<T> FixedDequeLifos<T> {
     pub fn push_back(&mut self, value: T) {
         self.debug_assert_consistent();
         self.debug_assert_contiguous();
-        self.debug_assert_capacity_for_one();
+        self.assert_capacity_for_one();
         debug_assert!(self.vec_deque.len() < self.vec_deque.capacity());
         self.vec_deque.push_back(value);
         self.back += 1;
@@ -137,8 +143,10 @@ impl<T> FixedDequeLifos<T> {
         #[cfg(debug_assertions)]
         debug_assert_eq!(self.original_capacity, self.vec_deque.capacity());
     }
+    /// NON-debug assert: run even in release. Otherwise client's mistakes could lead to undefined
+    /// behavior.
     #[inline(always)]
-    fn debug_assert_capacity_for_one(&self) {
-        debug_assert!(self.vec_deque.len() < self.vec_deque.capacity());
+    fn assert_capacity_for_one(&self) {
+        assert!(self.vec_deque.len() < self.vec_deque.capacity());
     }
 }

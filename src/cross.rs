@@ -3,7 +3,7 @@
 //! (Yes, there is "stuttering" (type names here start with "Cross", which is also in the package
 //! name). Idiomatic way to use types is to import them. Then there is no "stuttering".)
 
-use super::FixedDequeLifos;
+use crate::lifos::FixedDequeLifos;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter, Result as FmtResult};
 use core::mem;
