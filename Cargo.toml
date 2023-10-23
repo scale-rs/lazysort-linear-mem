@@ -4,7 +4,7 @@ resolver = "2"
 [workspace.package]
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.65.0"  # MSRV
+rust-version = "1.65.0"  # MSRV 1.65.0 so that we can use let-else pattern
 include = [
   "build.rs",
   "src/**/*",
@@ -17,9 +17,13 @@ include = [
 ]
 
 [package]
-name = "lazysort-prealloc"
+# TODO Consider sister crate names:
+# TODO lazysort-prealloc-nonrec
+# TODO lazysort-prealloc-iter
+#
+name = "lazysort-prealloc-rec"
 version = "0.0.1"
-description = "Lazy (delayed) Quick Sort with all storage pre-allocated"
+description = "Lazy (delayed) Quick Sort; all storage pre-allocated; recursive"
 keywords = [
 ]
 categories = [
@@ -46,4 +50,11 @@ pre-release-replacements = [
 
 [features]
 default = []
-alloc_guard = []
+# NONE of the (non-default) features are implemented yet!
+#
+# Use (nightly) allocator API. That does NOT necessarily mean accepting custom allocators for
+# `Vec`-s passed from the client - for that use `accept_custom_alloc`.
+_internal_use_allocator_api = []
+guard_cross_alloc = ["_internal_use_allocator_api"]
+guard_cross_cleanup = ["guard_cross_alloc"]
+accept_custom_alloc = ["guard_cross_cleanup"]

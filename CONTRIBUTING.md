@@ -21,11 +21,21 @@ talked about.
 Suggest
 
 - with `stable` Rust:
-  - `cargo check --tests`
-  - `cargo check --tests --release`
+  ```bash
+  cargo check --tests
+  cargo check --tests --release
+  ```
 - with `nightly` Rust:
-  - `cargo check --tests --features alloc_guard`
-  - `cargo check --tests --features alloc_guard --release`
+  ```bash
+  cargo check --tests --features _internal_use_allocator_api
+  cargo check --tests --features _internal_use_allocator_api --release
+  cargo check --tests --features guard_cross_alloc
+  cargo check --tests --features guard_cross_alloc --release
+  cargo check --tests --features guard_cross_cleanup
+  cargo check --tests --features guard_cross_cleanup --release
+  cargo check --tests --features accept_custom_alloc
+  cargo check --tests --features accept_custom_alloc --release
+  ```
 
 ## Pull Requests
 

@@ -1,16 +1,16 @@
 #![no_std]
-#![cfg_attr(feature = "alloc_guard", feature(allocator_api))]
+#![cfg_attr(feature = "_internal_use_allocator_api", feature(allocator_api))]
+#![allow(incomplete_features)]
+#![feature(lazy_type_alias)]
 
 extern crate alloc;
-
-#[cfg(feature = "alloc_guard")]
-use alloc::alloc::{Allocator, Global};
 
 use alloc::vec::Vec;
 use core::{mem, ops::Deref};
 //use cross;
 use lifos::FixedDequeLifos;
 
+pub mod calloc;
 mod cross;
 mod lifos;
 
@@ -31,6 +31,7 @@ mod test {
 pub type StorePair<T> = [Vec<T>; 2];
 
 pub type InputStorePair<T> = (Vec<T>, StorePair<T>);
+pub type OutputPair<T> = (Vec<T>, Storage<T>);
 
 /// The [`bool`] part (complete) indicates whether we've handled (sorted & consumed) all items.
 ///
@@ -88,6 +89,24 @@ where
     CONSUME: FnMut(usize, T) -> bool,
 {
     move |idx, value| MustUse(consume(idx, value))
+}
+
+///
+#[non_exhaustive]
+#[repr(transparent)]
+pub struct Storage<T>(pub Vec<T>);
+
+#[must_use]
+pub fn qsort_idx_NEW<T, CONSUME>(
+    input: Vec<T>,
+    storage: Storage<T>,
+    consume: &mut CONSUME,
+) -> OutputPair<T>
+where
+    T: Ord,
+    CONSUME: FnMut(usize, T) -> bool,
+{
+    todo!()
 }
 
 ///
