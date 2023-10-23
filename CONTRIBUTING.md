@@ -31,12 +31,12 @@ Suggest
   cargo check --tests --features nightly_lazy_type_alias --release
   cargo check --tests --features _internal_use_allocator_api
   cargo check --tests --features _internal_use_allocator_api --release
-  cargo check --tests --features nightly_guard_cross_alloc
-  cargo check --tests --features nightly_guard_cross_alloc --release
-  cargo check --tests --features nightly_guard_cross_cleanup
-  cargo check --tests --features nightly_guard_cross_cleanup --release
-  cargo check --tests --features nightly_accept_custom_alloc
-  cargo check --tests --features nightly_accept_custom_alloc --release
+  cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_alloc"
+  cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_alloc" --release
+  cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_cleanup"
+  cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_cleanup" --release
+  cargo check --tests --features "nightly_strict_provenance nightly_accept_custom_alloc"
+  cargo check --tests --features "nightly_strict_provenance nightly_accept_custom_alloc" --release
   ```
 
 ## Pull Requests

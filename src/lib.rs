@@ -3,6 +3,7 @@
 #![allow(incomplete_features)]
 #![cfg_attr(not(feature = "nightly_lazy_type_alias"), allow(type_alias_bounds))]
 #![cfg_attr(feature = "nightly_lazy_type_alias", feature(lazy_type_alias))]
+#![cfg_attr(feature = "nightly_strict_provenance", feature(strict_provenance))]
 
 extern crate alloc;
 
