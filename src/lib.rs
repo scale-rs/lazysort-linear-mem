@@ -1,7 +1,8 @@
 #![no_std]
 #![cfg_attr(feature = "_internal_use_allocator_api", feature(allocator_api))]
 #![allow(incomplete_features)]
-#![feature(lazy_type_alias)]
+#![allow(type_alias_bounds)]
+#![cfg_attr(feature = "nightly_lazy_type_alias", feature(lazy_type_alias))]
 
 extern crate alloc;
 

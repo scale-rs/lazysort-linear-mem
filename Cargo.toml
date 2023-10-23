@@ -54,7 +54,8 @@ default = []
 #
 # Use (nightly) allocator API. That does NOT necessarily mean accepting custom allocators for
 # `Vec`-s passed from the client - for that use `accept_custom_alloc`.
-_internal_use_allocator_api = []
-guard_cross_alloc = ["_internal_use_allocator_api"]
-guard_cross_cleanup = ["guard_cross_alloc"]
-accept_custom_alloc = ["guard_cross_cleanup"]
+nightly_lazy_type_alias     = []
+_internal_use_allocator_api = ["nightly_lazy_type_alias"]
+nightly_guard_cross_alloc   = ["nightly_lazy_type_alias", "_internal_use_allocator_api"]
+nightly_guard_cross_cleanup = ["nightly_lazy_type_alias", "nightly_guard_cross_alloc"]
+nightly_accept_custom_alloc = ["nightly_lazy_type_alias", "nightly_guard_cross_cleanup"]

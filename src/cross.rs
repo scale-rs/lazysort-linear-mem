@@ -11,12 +11,15 @@ use core::mem;
 #[cfg(test)]
 mod cross_tests;
 
-#[cfg(not(feature = "guard_cross_alloc"))]
+#[cfg(not(feature = "nightly_guard_cross_alloc"))]
 pub type CrossVec<T> = Vec<T>;
-#[cfg(all(feature = "guard_cross_alloc", not(feature = "guard_cross_cleanup")))]
+#[cfg(all(
+    feature = "nightly_guard_cross_alloc",
+    not(feature = "nightly_guard_cross_cleanup")
+))]
 // TODO custom Alloc
 pub type CrossVec<T> = Vec<T>;
-#[cfg(feature = "guard_cross_cleanup")]
+#[cfg(feature = "nightly_guard_cross_cleanup")]
 // TODO custom Alloc with cleanup check
 pub type CrossVec<T> = Vec<T>;
 
@@ -45,9 +48,9 @@ enum CrossVecPairGuardState<T> {
     /// "ingredients" from the original [`FixedDequeLifos`] or its backing
     /// [`alloc::collections::VecDeque`], and constructing the [`CrossVecPair`] later).
     NotTakenYet(CrossVecPair<T>),
-    #[cfg(not(feature = "guard_cross_cleanup"))]
+    #[cfg(not(feature = "nightly_guard_cross_cleanup"))]
     TakenOut,
-    #[cfg(feature = "guard_cross_cleanup")]
+    #[cfg(feature = "nightly_guard_cross_cleanup")]
     /// TODO a field with 2x Arc - one per Vec.
     ///
     /// Using [Arc], instead of [Rc], in case [`CrossVecPair`] or any of its [`Vec`]-s is sent to a
