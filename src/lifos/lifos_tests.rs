@@ -6,7 +6,16 @@ extern crate std;
 
 #[test]
 fn push_front_push_back() {
-    let lifos = FixedDequeLifos::<u8>::new_from_empty(VecDeque::<u8>::with_capacity(3));
+    let mut lifos = FixedDequeLifos::<u8>::new_from_empty(VecDeque::<u8>::with_capacity(3));
+    lifos.push_front(1);
+    lifos.push_back(2);
+    lifos.push_back(3);
+}
+#[test]
+fn push_back_push_front() {
+    let mut lifos = FixedDequeLifos::<u8>::new_from_empty(VecDeque::<u8>::with_capacity(7));
+    lifos.push_back(1);
+    lifos.push_front(2);
 }
 
 // ------------
