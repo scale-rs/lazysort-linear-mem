@@ -152,17 +152,30 @@ impl<T, A: Allocator> FixedDequeLifos<T, A> {
             self.assert_total_capacity_for_two();
 
             unsafe {
-                let vec_deque = ptr::read(&self.vec_deque as *const VecDeque<T, A>);
+                // The following failed to compile with our crate's feature
+                // `_internal_use_allocator_api` (on `nightly`)
+                //let vec_deque = ptr::read(&self.vec_deque as *const VecDeque<T, A>);
+                //let mut vec_deque =
+                //    mem::transmute::<VecDeque<T, A>, VecDeque<MaybeUninit<T>, A>>(vec_deque);
+
+                // TODO is this sound?
                 let mut vec_deque =
-                    mem::transmute::<VecDeque<T, A>, VecDeque<MaybeUninit<T>, A>>(vec_deque);
+                    ptr::read(&self.vec_deque as *const _ as *const VecDeque<MaybeUninit<T>, A>);
 
                 vec_deque.push_front(MaybeUninit::uninit());
                 vec_deque.push_back(MaybeUninit::new(value));
                 let popped = vec_deque.pop_front();
                 debug_assert!(popped.is_some());
 
-                let vec_deque = mem::transmute::<_, VecDeque<T, A>>(vec_deque);
-                ptr::write(&mut self.vec_deque as *mut VecDeque<T, A>, vec_deque);
+                // The following caused an error again:
+                // let vec_deque = mem::transmute::<_, VecDeque<T, A>>(vec_deque);
+                // ptr::write(&mut self.vec_deque as *mut VecDeque<T, A>, vec_deque);
+                
+                // TODO is this sound?
+                ptr::write(
+                    &mut self.vec_deque as *mut _ as *mut VecDeque<MaybeUninit<T>, A>,
+                    vec_deque,
+                );
             }
         }
         self.back += 1;
