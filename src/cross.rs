@@ -11,17 +11,22 @@ use core::mem;
 #[cfg(test)]
 mod cross_tests;
 
+// ======= CrossVec:
 #[cfg(not(feature = "nightly_guard_cross_alloc"))]
 pub type CrossVec<T> = Vec<T>;
+
 #[cfg(all(
     feature = "nightly_guard_cross_alloc",
     not(feature = "nightly_guard_cross_cleanup")
 ))]
 // TODO custom Alloc
 pub type CrossVec<T> = Vec<T>;
+
 #[cfg(feature = "nightly_guard_cross_cleanup")]
 // TODO custom Alloc with cleanup check
+// TODO A: Alloc
 pub type CrossVec<T> = Vec<T>;
+// ======= end of: CrossVec
 
 /// "Front" and "back" RESTRICTED [`Vec`]-s (in this order). Each based on the respective part of
 /// the [`alloc::collections::VecDeque`] that was a part of [`FixedDequeLifos`] used to create the

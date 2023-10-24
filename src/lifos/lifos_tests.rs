@@ -25,8 +25,11 @@ fn rnd_u32(min: u32, max: u32) -> u32 {
     }
 }
 
-fn empty_vec_deque_puts_back_item_to_back_for_capacity(capacity: usize) {
-    assert!(capacity >= 2);
+const MIN_VEC_DEQUE_CAPACITY: u32 = 2;
+const MAX_VEC_DEQUE_CAPACITY: u32 = 65535;
+
+fn empty_vec_deque_puts_back_item_to_front(capacity: usize) {
+    assert!(capacity >= MIN_VEC_DEQUE_CAPACITY as usize);
     let mut vec_deque = VecDeque::<bool>::with_capacity(capacity);
 
     vec_deque.push_back(true);
@@ -36,7 +39,17 @@ fn empty_vec_deque_puts_back_item_to_back_for_capacity(capacity: usize) {
     assert!(back.is_empty());
 }
 
-const MAX_VEC_DEQUE_CAPACITY: u32 = 65535;
+fn single_item_vec_deque_rotate_left_does_not_circular(capacity: usize) {
+    assert!(capacity >= MIN_VEC_DEQUE_CAPACITY as usize);
+    let mut vec_deque = VecDeque::<bool>::with_capacity(capacity);
+
+    vec_deque.push_back(true);
+    vec_deque.rotate_left(1);
+    let (front, back) = vec_deque.as_slices();
+
+    assert_eq!(front.len(), 1);
+    assert!(back.is_empty());
+}
 
 /// If this ever fails, it means we don't need to have our MaybeUninit workaround. Then
 /// - feel free to disable this test, or even better: reverse it
@@ -47,11 +60,26 @@ const MAX_VEC_DEQUE_CAPACITY: u32 = 65535;
 /// If this test succeeds, it demonstrates the problem situation which caused us to (temporarily)
 /// use MaybeUninit in in [crate::lifos::FixedDequeLifos] until the first .push_front(..).
 #[test]
-fn empty_vec_deque_puts_back_item_to_back() {
-    empty_vec_deque_puts_back_item_to_back_for_capacity(2);
+fn empty_vec_deque_puts_back_item_to_front_for_capacities() {
+    empty_vec_deque_puts_back_item_to_front(MIN_VEC_DEQUE_CAPACITY as usize);
 
-    let capacity = rnd_u32(2, MAX_VEC_DEQUE_CAPACITY) as usize;
-    empty_vec_deque_puts_back_item_to_back_for_capacity(capacity);
+    let capacity = rnd_u32(MIN_VEC_DEQUE_CAPACITY, MAX_VEC_DEQUE_CAPACITY) as usize;
+    empty_vec_deque_puts_back_item_to_front(capacity);
 
-    empty_vec_deque_puts_back_item_to_back_for_capacity(MAX_VEC_DEQUE_CAPACITY as usize);
+    empty_vec_deque_puts_back_item_to_front(MAX_VEC_DEQUE_CAPACITY as usize);
+}
+
+/// If this ever fails, it means we don't need to have our MaybeUninit workaround.
+///
+/// If this test succeeds, it demonstrates: If we're putting in the first item to a [`VecDeque`],
+/// and putting it to __back__, even if we then `vec_deque.rotate_left(1)`, it will not move that
+/// (single) item to the right side of the [`VecDeque`].
+#[test]
+fn single_item_vec_deque_rotate_left_does_not_circular_for_capacities() {
+    single_item_vec_deque_rotate_left_does_not_circular(MIN_VEC_DEQUE_CAPACITY as usize);
+
+    let capacity = rnd_u32(MIN_VEC_DEQUE_CAPACITY, MAX_VEC_DEQUE_CAPACITY) as usize;
+    single_item_vec_deque_rotate_left_does_not_circular(capacity);
+
+    single_item_vec_deque_rotate_left_does_not_circular(MAX_VEC_DEQUE_CAPACITY as usize);
 }

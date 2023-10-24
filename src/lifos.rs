@@ -1,7 +1,12 @@
 use alloc::collections::VecDeque;
+use core::mem::MaybeUninit;
 
 #[cfg(test)]
 mod lifos_tests;
+
+/// See an example at
+/// <https://doc.rust-lang.org/nightly/core/mem/union.MaybeUninit.html#initializing-an-array-element-by-element>
+/// -> "(a) bunch of `MaybeUninit`s, which do not require initialization".
 
 /// A contract on top of [`VecDeque`]. It (logically) keeps two LIFO (Last-In First-Out) queues,
 /// growing in the opposite directions toward each other. (Similar to how stack & heap grow toward
@@ -10,8 +15,16 @@ mod lifos_tests;
 /// ```
 /// /*
 /// /------------------------\
+/// | FRONT          BACK    |
+/// |    |           |       |
+/// |    v           v       |
 /// | abcd ->     <- 6543210 |
 /// \------------------------/
+///
+/// (Assuming there has been at least 1 FRONT item BEFORE the first BACK item was put in. Otherwise
+///  we temporarily transmute to VecDeque<MaybeUninit<T>>, put in a temporary uninitialized "front"
+///  item, put in the actual back item, remove the temporary (uninitialized) front item, transmute
+///  back to VecDeque<T>.)
 /// */
 /// ```
 /// TODO report:
@@ -24,18 +37,23 @@ mod lifos_tests;
 /// client - otherwise [`FixedDequeLifos::push_front()`] and [`FixedDequeLifos::push_front()`] will
 /// panic (even in release)!
 ///
+/// Minimum [`VecDeque`] capacity is 2 (even if you expect max. 1 item).
+///
 /// This *could* take [`VecDeque`] by mutable reference. But, it takes it owned (moved) instead -
 /// because that suits [`CrossVecPairOrigin`].
+#[derive(Debug)]
 pub struct FixedDequeLifos<T> {
     vec_deque: VecDeque<T>,
     /// Front (left) side length.
     front: usize,
     /// Back (right) side length.
     back: usize,
+
     #[cfg(debug_assertions)]
     /// Used by checks for consistency & checks on push_front/push_back.
     original_capacity: usize,
 }
+
 // TODO
 // - change to: From Vec<T>, AND
 // - accept optional Alloc param.
@@ -47,6 +65,15 @@ impl<T> From<VecDeque<T>> for FixedDequeLifos<T> {
     /// "This conversion is guaranteed to run in O(1) time and to not re-allocate the Vec’s buffer
     fn from(mut vec_deque: VecDeque<T>) -> Self {
         debug_assert!(vec_deque.is_empty());
+        // See also fn push_back(...).
+        //
+        // In general, the capacity does NOT need to be expected_ number_of_items+1. It is so only
+        // if all you expect is one item: then the capacity must be at least 2 (which, in that
+        // instance, happens to be expected_ number_of_items+1).
+        //
+        // But, if you expect more than 1 item, the capacity does NOT need to be higher than the
+        // number of expected items - it may equal to that number.
+        debug_assert!(vec_deque.capacity() >= 2, "In order not to re-allocate, the vec_deque must have capacity of at least 2 (even if you were expecting max. 1 item).");
         // Once .pop_front() or .pop_back() empty the VecDeque completely, according to their source
         // code (see linked from
         // <https://doc.rust-lang.org/nightly/alloc/collections/vec_deque/struct.VecDeque.html#method.pop_front>
@@ -54,8 +81,10 @@ impl<T> From<VecDeque<T>> for FixedDequeLifos<T> {
         // <https://doc.rust-lang.org/nightly/alloc/collections/vec_deque/struct.VecDeque.html#method.pop_back>)
         // they do NOT ensure/reset the indices to 0 (to be contiguous). So WE ensure it here.
         vec_deque.make_contiguous();
+
         #[cfg(debug_assertions)]
         let original_capacity = vec_deque.capacity();
+
         let mut result = Self {
             vec_deque,
             front: 0,
@@ -73,6 +102,7 @@ impl<T> FixedDequeLifos<T> {
     pub fn new_from_empty(vec_deque: VecDeque<T>) -> Self {
         vec_deque.into()
     }
+
     /// Consume this instance, and return the underlying [`VecDeque`]. Sufficient for use by
     /// [`CrossVecPairGuard`], which (instead of [`FixedDequeLifos::front`] and
     /// [`FixedDequeLifos::back`]) uses [`VecDeque::as_mut_slices()`] to retrieve both the front &
@@ -94,19 +124,32 @@ impl<T> FixedDequeLifos<T> {
     pub fn push_front(&mut self, value: T) {
         self.debug_assert_consistent();
         self.debug_assert_contiguous();
-        self.assert_capacity_for_one();
+        self.assert_reserve_for_one();
+
+        // We can always push to front, regardless of whether there is any back item or not. This
+        // will not upset the back part (slice) positioning. (And, if there were no item yet at all
+        // - neither at the front, nor at the back, then this will enable easier push to the back
+        // from now on.)
         self.vec_deque.push_front(value);
         self.front += 1;
+
         self.debug_assert_consistent();
         self.debug_assert_contiguous();
     }
     pub fn push_back(&mut self, value: T) {
         self.debug_assert_consistent();
         self.debug_assert_contiguous();
-        self.assert_capacity_for_one();
-        debug_assert!(self.vec_deque.len() < self.vec_deque.capacity());
-        self.vec_deque.push_back(value);
+
+        if !self.vec_deque.is_empty() {
+            self.assert_reserve_for_one();
+            self.vec_deque.push_back(value);
+        } else {
+            self.assert_total_capacity_for_two();
+
+            self.vec_deque.push_back(value);
+        }
         self.back += 1;
+
         self.debug_assert_consistent();
         self.debug_assert_contiguous();
     }
@@ -143,10 +186,23 @@ impl<T> FixedDequeLifos<T> {
         #[cfg(debug_assertions)]
         debug_assert_eq!(self.original_capacity, self.vec_deque.capacity());
     }
-    /// NON-debug assert: run even in release. Otherwise client's mistakes could lead to undefined
+
+    /// NON-debug assert: run in RELEASE, too. Otherwise client's mistakes could lead to undefined
     /// behavior.
     #[inline(always)]
-    fn assert_capacity_for_one(&self) {
+    fn assert_reserve_for_one(&self) {
         assert!(self.vec_deque.len() < self.vec_deque.capacity());
+    }
+
+    /// NON-debug assert: run in RELEASE, too. Call only on empty: specialized for use by
+    /// `push_back(...)`.
+    #[inline(always)]
+    fn assert_total_capacity_for_two(&self) {
+        debug_assert!(
+            self.vec_deque.is_empty(),
+            "This can be called only when vec_deque is empty. But it has {} item(s) instead!",
+            self.vec_deque.len()
+        );
+        assert!(self.vec_deque.capacity() >= 2);
     }
 }
