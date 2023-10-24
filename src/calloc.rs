@@ -10,10 +10,13 @@
 
 use alloc::collections::VecDeque as StdVecDeque;
 use alloc::vec::Vec as StdVec;
+
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 use core::marker::PhantomData;
+
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 use core::ops::{Deref, DerefMut};
+
 //#[cfg(feature = "_internal_use_allocator_api")]
 //use alloc::alloc::{Allocator as StdAllocator, Global as StdGlobal};
 
@@ -28,7 +31,7 @@ pub use alloc::alloc::{Allocator, Global};
 pub trait Allocator {}
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Global {}
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
@@ -37,7 +40,19 @@ impl Allocator for Global {}
 //-------- end of: Allocator, Global
 
 //-------- Vec
-// `A: Allocator` is possible (and required) here with #![feature(lazy_type_alias)] ONLY:
+/* The following is an alternative to the alias `pub type Vec<T, A: Allocator = Global> = StdVec<T, A>;` (and for the similar alias for VecDeque).
+However, the following still caused the same error.
+
+#[cfg(feature = "_internal_use_allocator_api")]
+/// For re-export
+mod from_std {
+    pub use alloc::vec::Vec;
+    pub use alloc::collections::VecDeque;
+}
+#[cfg(feature = "_internal_use_allocator_api")]
+pub use from_std::{Vec, VecDeque};
+*/
+// `A: Allocator` is required here with #![feature(lazy_type_alias)] ONLY:
 #[cfg(feature = "_internal_use_allocator_api")]
 pub type Vec<T, A: Allocator = Global> = StdVec<T, A>;
 // --
@@ -47,7 +62,7 @@ pub type Vec<T, A: Allocator = Global> = StdVec<T, A>;
 pub struct Vec<T, A: Allocator = Global>(StdVec<T>, PhantomData<A>);
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
-impl<T> Deref for Vec<T> {
+impl<T, A: Allocator> Deref for Vec<T, A> {
     type Target = StdVec<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -56,26 +71,32 @@ impl<T> Deref for Vec<T> {
 }
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
-impl<T> DerefMut for Vec<T> {
+impl<T, A: Allocator> DerefMut for Vec<T, A> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-// TODO impl<T> From<VecDeque<T>> for Vec<T> {}
+#[cfg(not(feature = "_internal_use_allocator_api"))]
+impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
+    fn from(vec_deque: VecDeque<T, A>) -> Self {
+        Self(vec_deque.0.into(), PhantomData)
+    }
+}
 //-------- end of: Vec
 
 //-------- VecDeque
-// `A: Allocator` is possible (and required) here with #![feature(lazy_type_alias)] ONLY:
+// `A: Allocator` is required here with #![feature(lazy_type_alias)] ONLY:
 #[cfg(feature = "_internal_use_allocator_api")]
 pub type VecDeque<T, A: Allocator = Global> = StdVecDeque<T, A>;
 // --
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct VecDeque<T, A: Allocator = Global>(StdVecDeque<T>, PhantomData<A>);
 
-// TODO if never used in release, then enable it for
+// TODO if never used in release, then enable it for debug? Or remove!
 //
 // #[cfg(all(not(feature = "_internal_use_allocator_api"), test))]
 //
@@ -112,7 +133,13 @@ impl<T, A: Allocator> DerefMut for VecDeque<T, A> {
         &mut self.0
     }
 }
-// TODO impl<T> From<Vec<T>> for VecDeque<T> {}
+
+#[cfg(not(feature = "_internal_use_allocator_api"))]
+impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
+    fn from(v: Vec<T, A>) -> Self {
+        Self(v.0.into(), PhantomData)
+    }
+}
 //-------- end of: VecDeque
 
 // TODO REPORT

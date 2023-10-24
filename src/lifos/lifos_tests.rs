@@ -1,11 +1,15 @@
 use crate::calloc::VecDeque;
+use crate::lifos::FixedDequeLifos;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 extern crate std;
 
-use core::char::MAX;
-use std::error::Error;
-use std::time::{SystemTime, UNIX_EPOCH};
+#[test]
+fn push_front_push_back() {
+    let lifos = FixedDequeLifos::<u8>::new_from_empty(VecDeque::<u8>::with_capacity(3));
+}
 
+// ------------
 const MAX_RND: u32 = 1000_000_000;
 // Thanks to https://blog.orhun.dev/zero-deps-random-in-rust/
 /// Return a (semi)random number, between 0 (inclusive) up to `max` (exclusive). `max-min` must be
