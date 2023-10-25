@@ -132,16 +132,16 @@ impl<T> From<FixedDequeLifos<T>> for CrossVecPairGuard<T> {
 impl<T> CrossVecPairGuard<T> {
     /// TODO: Should this be marked as `unsafe`? But: this function itself does NOT cause any
     /// undefined behavior. Its inappropriate use of [`Vec`]-s from a [`CrossVecPair`] "taken" from
-    /// a [`CrossVecPairOrigin`] that can lead to undefined behavior.
+    /// a [`CrossVecPairGuard`] that can lead to undefined behavior.
     ///
     /// If this were marked as `unsafe`, then we should NOT implement [`From`].
     ///
-    /// Once you instantiate a [`CrossVecPairOrigin`] (which is possible ony with this function),
-    /// you MUST take the pair out with [CrossVecPairOrigin::temp_take()], and then move it back
-    /// with [CrossVecPairOrigin::move_back_join_into()]. Regardless of whether you use the pair or
+    /// Once you instantiate a [`CrossVecPairGuard`] (which is possible ony with this function),
+    /// you MUST take the pair out with [CrossVecPairGuard::temp_take()], and then move it back
+    /// with [CrossVecPairGuard::move_back_join_into()]. Regardless of whether you use the pair or
     /// not!
     ///
-    /// You MUST not let a [`CrossVecPairOrigin`] instance go out of scope without taking the pair
+    /// You MUST not let a [`CrossVecPairGuard`] instance go out of scope without taking the pair
     /// out & then putting it back and discarding as per above.
     #[must_use]
     pub fn new_from_lifos(fixed_deque_lifos: FixedDequeLifos<T>) -> Self {
@@ -156,7 +156,7 @@ impl<T> CrossVecPairGuard<T> {
     /// which takes the [`Vec`] by value (move).
     ///
     /// Once you're finished using the [`CrossVecPair`], undo this with
-    /// [CrossVecPairOrigin::move_back_join_into()].
+    /// [CrossVecPairGuard::move_back_join_into()].
     #[must_use]
     pub fn temp_take(&mut self) -> CrossVecPair<T> {
         // self.state does get checked later in this function, too - and even in release.
@@ -185,19 +185,19 @@ impl<T> CrossVecPairGuard<T> {
     #[inline(always)]
     fn debug_assert_consistent(&self, pair: &CrossVecPair<T>) {}
 
-    /// Safely discard the given [`CrossVecPair`] that was "taken" from this [`CrossVecPairOrigin`]
-    /// instance, and discard this this [`CrossVecPairOrigin`] instance itself.
+    /// Safely discard the given [`CrossVecPair`] that was "taken" from this [`CrossVecPairGuard`]
+    /// instance, and discard this this [`CrossVecPairGuard`] instance itself.
     ///
-    /// Check that the parameter `pair` are [`Vec`]s based on this [`CrossVecPairOrigin`] instance.
+    /// Check that the parameter `pair` are [`Vec`]s based on this [`CrossVecPairGuard`] instance.
     /// Then "move" the pair back, move any leftover items from the "back" (right) side to the
-    /// "front" (left) side. Then consume this [`CrossVecPairOrigin`] instance (without releasing
+    /// "front" (left) side. Then consume this [`CrossVecPairGuard`] instance (without releasing
     /// any memory), and transform it back to a single [`Vec`] (but NOT back to a
     /// [`alloc::collections::VecDeque`], since in such a stage this crate doesn't need it as
     /// [`alloc::collections::VecDeque`] anymore. The result [`Vec`]) will have its `capacity` same
     /// as the original [`alloc::collections::VecDeque`].
     ///
     /// You MUST call this before the instance (if you "took" a [CrossVecPair] from it) before this
-    /// ([`CrossVecPairOrigin`] instance) goes out of scope.
+    /// ([`CrossVecPairGuard`] instance) goes out of scope.
     ///
     /// You don't have to re-use this function's result [`Vec`]. But it's advantageous to re-use it,
     /// so as to minimize reallocation (which is this crate's main purpose).

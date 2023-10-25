@@ -16,6 +16,7 @@ use lifos::FixedDequeLifos;
 
 pub mod calloc;
 mod cross;
+mod idx;
 mod lifos;
 
 #[cfg(test)]
