@@ -11,4 +11,4 @@
 
 ## Limitations
 
-- Stack: recursive.
+- Stack depth (recursive).
