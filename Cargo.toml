@@ -18,8 +18,9 @@ include = [
 
 [package]
 # TODO Consider sister crate names:
-# TODO lazysort-prealloc-nonrec
-# TODO (lazysort-prealloc-iter)
+#      lazysort-base
+#      lazysort-prealloc-rec
+# TODO lazysort-prealloc
 # TODO lazysort-noalloc
 #
 name = "lazysort-prealloc-rec"

@@ -1,5 +1,5 @@
 use crate::calloc::{Allocator, Global, Vec, VecDeque};
-use core::mem::MaybeUninit;
+use core::mem::{MaybeUninit, self};
 use core::ptr;
 
 // - TODO no-alloc-friendly "SliceDeque" struct
@@ -233,7 +233,12 @@ impl<T, A: Allocator> FixedDequeLifos<T, A> {
                 // let vec_deque = mem::transmute::<_, VecDeque<T, A>>(vec_deque);
                 // ptr::write(&mut self.vec_deque as *mut VecDeque<T, A>, vec_deque);
 
-                // TODO is this sound?
+                // TODO the below active (uncommented) code sound? If not, how about the following
+                // (commented) code?
+                // let tmp_vec_deque = vec_deque;
+                // let vec_deque = ptr::read(&tmp_vec_deque as *const _ as *const MaybeUninit<VecDeque<T, A>>);
+                // mem::forget(tmp_vec_deque);
+
                 ptr::write(
                     &mut self.vec_deque as *mut _ as *mut VecDeque<MaybeUninit<T>, A>,
                     vec_deque,
