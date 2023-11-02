@@ -22,10 +22,11 @@ include = [
 #      lazysort-prealloc-rec
 # TODO lazysort-prealloc
 # TODO lazysort-noalloc
+# custom flexi pluggable fixed fixed-space
 #
-name = "lazysort-prealloc-rec"
+name = "lazysort-linear-mem"
 version = "0.0.1"
-description = "Lazy (delayed) Quick Sort; all storage pre-allocated; recursive"
+description = "Lazy (delayed) Quick Sort; all storage pre-allocated or array/slice-based; recursive - but later with non-recursive alternative"
 keywords = [
 ]
 categories = [
@@ -34,7 +35,7 @@ license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 include.workspace = true
-repository = "https://github.com/scale-rs/lazysort-prealloc"
+repository = "https://github.com/scale-rs/lazysort-linear-mem"
 authors = ["Peter Kehl <peter.kehl@gmail.com>"]
 
 [package.metadata.docs.rs]
@@ -47,19 +48,28 @@ pre-release-replacements = [
   {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
   {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
   {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
-  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/ORG/PROJECT/compare/{{tag_name}}...HEAD", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/scale-rs/lazysort-linear-mem/compare/{{tag_name}}...HEAD", exactly=1},
 ]
 
 [features]
 default = []
+alloc = []
+
 # Most of the (non-default) features are NOT implemented yet!
 nightly_lazy_type_alias     = []
+# nightly_strict_provenance on its own doesn't do anything. Use it with nightly_guard_cross_alloc
+# and/or nightly_guard_cross_cleanup and/or nightly_accept_custom_alloc.
+#
+# TODO for non-alloc?
 nightly_strict_provenance   = []
 
 # Use (nightly) allocator API. That does NOT necessarily mean accepting custom allocators for
 # `Vec`-s passed from the client - for that use `accept_custom_alloc`.
-_internal_use_allocator_api = ["nightly_lazy_type_alias"]
+_internal_use_allocator_api = ["nightly_lazy_type_alias", "alloc"]
 
+# TODO work these two out for alloc/non-alloc, or only for alloc, or incorporate all the time &
+# remove the feature flags themselves
 nightly_guard_cross_alloc   = ["nightly_lazy_type_alias", "_internal_use_allocator_api"]
 nightly_guard_cross_cleanup = ["nightly_lazy_type_alias", "nightly_guard_cross_alloc"]
+
 nightly_accept_custom_alloc = ["nightly_lazy_type_alias", "nightly_guard_cross_cleanup"]

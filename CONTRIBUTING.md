@@ -24,19 +24,31 @@ Suggest
   ```bash
   cargo check --tests
   cargo check --tests --release
+
+  cargo check --tests --features alloc
+  cargo check --tests --features alloc --release
   ```
 - with `nightly` Rust:
   ```bash
   cargo check --tests --features nightly_lazy_type_alias
   cargo check --tests --features nightly_lazy_type_alias --release
+
   cargo check --tests --features _internal_use_allocator_api
   cargo check --tests --features _internal_use_allocator_api --release
+
   cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_alloc"
   cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_alloc" --release
+
   cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_cleanup"
   cargo check --tests --features "nightly_strict_provenance nightly_guard_cross_cleanup" --release
+
   cargo check --tests --features "nightly_strict_provenance nightly_accept_custom_alloc"
   cargo check --tests --features "nightly_strict_provenance nightly_accept_custom_alloc" --release
+
+  cargo check --tests --features "alloc nightly_lazy_type_alias"
+  cargo check --tests --features "alloc nightly_lazy_type_alias --release
+  #
+  # No need to check/test "alloc" feature with the rest of features, because they all turn on/depend on "alloc" features themselves.
   ```
 
 ## Pull Requests
