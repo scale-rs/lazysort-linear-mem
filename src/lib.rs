@@ -27,7 +27,7 @@ mod test {
     fn convert_not_invoking_drop() {}
 }
 
-/// For ensuring we use a result from closures.
+/// For ensuring we use the result returned from closures.
 #[must_use]
 #[repr(transparent)]
 struct MustUse<T>(T);

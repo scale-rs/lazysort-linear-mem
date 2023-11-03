@@ -1,5 +1,6 @@
 use crate::calloc::calloc_vec::{Vec, VecDeque};
 use crate::calloc::{Allocator, Global};
+use crate::store::lifos::Lifos;
 use core::mem::{self, MaybeUninit};
 use core::ptr;
 
@@ -187,7 +188,45 @@ impl<T, A: Allocator> FixedDequeLifos<T, A> {
         self.vec_deque
     }
 
-    pub fn push_left(&mut self, value: T) {
+    #[inline(always)]
+    fn debug_assert_consistent(&self) {
+        #[cfg(debug_assertions)]
+        debug_assert_eq!(self.original_capacity, self.vec_deque.capacity());
+        debug_assert_eq!(self.left + self.right, self.vec_deque.len());
+        debug_assert!({
+            let (back, front) = self.vec_deque.as_slices();
+            debug_assert_eq!(back.len(), self.left);
+            debug_assert_eq!(front.len(), self.right);
+            true
+        });
+    }
+
+    /// NON-debug assert: run in RELEASE, too. Otherwise client's mistakes could lead to undefined
+    /// behavior.
+    #[inline(always)]
+    fn assert_reserve_for_one(&self) {
+        assert!(self.vec_deque.len() < self.vec_deque.capacity());
+    }
+
+    /// NON-debug assert: running in RELEASE, too. Call only on empty: specialized for use by
+    /// `push_right(...)`.
+    #[inline(always)]
+    fn assert_total_capacity_for_two(&self) {
+        debug_assert!(
+            self.vec_deque.is_empty(),
+            "This can be called only when vec_deque is empty. But it has {} item(s) instead!",
+            self.vec_deque.len()
+        );
+        assert!(self.vec_deque.capacity() >= 2);
+    }
+}
+
+impl<T, A: Allocator> Lifos<T> for FixedDequeLifos<T, A> {
+    fn has_to_push_left_first() -> bool {
+        true
+    }
+
+    fn push_left(&mut self, value: T) {
         self.debug_assert_consistent();
         self.assert_reserve_for_one();
 
@@ -201,7 +240,7 @@ impl<T, A: Allocator> FixedDequeLifos<T, A> {
         self.debug_assert_consistent();
     }
 
-    pub fn push_right(&mut self, value: T) {
+    fn push_right(&mut self, value: T) {
         self.debug_assert_consistent();
 
         if !self.vec_deque.is_empty() {
@@ -247,44 +286,10 @@ impl<T, A: Allocator> FixedDequeLifos<T, A> {
         self.debug_assert_consistent();
     }
 
-    /// How many items on the right.
-    pub fn right(&self) -> usize {
+    fn right(&self) -> usize {
         self.right
     }
-    /// How many items on the left.
-    pub fn left(&self) -> usize {
+    fn left(&self) -> usize {
         self.left
-    }
-
-    #[inline(always)]
-    fn debug_assert_consistent(&self) {
-        #[cfg(debug_assertions)]
-        debug_assert_eq!(self.original_capacity, self.vec_deque.capacity());
-        debug_assert_eq!(self.left + self.right, self.vec_deque.len());
-        debug_assert!({
-            let (back, front) = self.vec_deque.as_slices();
-            debug_assert_eq!(back.len(), self.left);
-            debug_assert_eq!(front.len(), self.right);
-            true
-        });
-    }
-
-    /// NON-debug assert: run in RELEASE, too. Otherwise client's mistakes could lead to undefined
-    /// behavior.
-    #[inline(always)]
-    fn assert_reserve_for_one(&self) {
-        assert!(self.vec_deque.len() < self.vec_deque.capacity());
-    }
-
-    /// NON-debug assert: running in RELEASE, too. Call only on empty: specialized for use by
-    /// `push_right(...)`.
-    #[inline(always)]
-    fn assert_total_capacity_for_two(&self) {
-        debug_assert!(
-            self.vec_deque.is_empty(),
-            "This can be called only when vec_deque is empty. But it has {} item(s) instead!",
-            self.vec_deque.len()
-        );
-        assert!(self.vec_deque.capacity() >= 2);
     }
 }

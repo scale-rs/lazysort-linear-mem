@@ -44,11 +44,15 @@ Suggest
 
   cargo check --tests --features "nightly_strict_provenance nightly_accept_custom_alloc"
   cargo check --tests --features "nightly_strict_provenance nightly_accept_custom_alloc" --release
-
+  
+  #
+  # Explicit "alloc" feature:
+  #
   cargo check --tests --features "alloc nightly_lazy_type_alias"
   cargo check --tests --features "alloc nightly_lazy_type_alias --release
   #
-  # No need to check/test "alloc" feature with the rest of features, because they all turn on/depend on "alloc" features themselves.
+  # No need to check/test 'alloc' feature with the rest of features, because they all turn on/depend
+  # on 'alloc' features themselves.
   ```
 
 ## Pull Requests

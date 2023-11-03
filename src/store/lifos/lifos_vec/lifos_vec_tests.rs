@@ -1,5 +1,6 @@
 use crate::calloc::calloc_vec::VecDeque;
 use crate::store::lifos::lifos_vec::FixedDequeLifos;
+use crate::store::lifos::Lifos;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 extern crate std;
