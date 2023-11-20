@@ -1,7 +1,7 @@
 //! Re-exports/substitutes for [`alloc::alloc::Allocator`] &[`alloc::alloc::Global`], and
 //! allocation-enabled [`alloc::vec::Vec`] & [`alloc::collections::VecDeque`], so that we write the
 //! same code whether this crate is used with custom allocators (`nightly`-only as of 2023), or with
-//! standard allocator (`stable`/`beta` as of 2023).
+//! the default (global) allocator (`stable`/`beta` as of 2023).
 //!
 //! Restricted functionality, crossing data access with other structures in an `unsafe` way.
 //!

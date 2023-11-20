@@ -1,5 +1,6 @@
 #[cfg(feature = "alloc")]
 use crate::calloc::calloc_vec::{Vec, VecDeque};
+#[cfg(feature = "alloc")]
 use crate::calloc::{Allocator, Global};
 
 pub trait ReDeque<T> {

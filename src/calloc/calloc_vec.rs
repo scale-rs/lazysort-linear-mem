@@ -1,6 +1,4 @@
-#[cfg(feature = "alloc")]
 use alloc::collections::VecDeque as StdVecDeque;
-#[cfg(feature = "alloc")]
 use alloc::vec::Vec as StdVec;
 
 use crate::calloc::{Allocator, Global};

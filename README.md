@@ -9,6 +9,9 @@
 - Minimal & guard-controlled `unsafe` code and
   [core::mem::MaybeUninit](https://doc.rust-lang.org/nightly/core/mem/union.MaybeUninit.html).
 
-## Limitations
+## Initial Limitations
+
+Both of the following limitations will be lifted later:
 
 - Stack depth (recursive).
+- Needs `alloc`.

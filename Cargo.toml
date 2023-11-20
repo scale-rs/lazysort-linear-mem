@@ -17,16 +17,9 @@ include = [
 ]
 
 [package]
-# TODO Consider sister crate names:
-#      lazysort-base
-#      lazysort-prealloc-rec
-# TODO lazysort-prealloc
-# TODO lazysort-noalloc
-# custom flexi pluggable fixed fixed-space
-#
-name = "lazysort-linear-mem"
+name = "lazysort-no-alloc"
 version = "0.0.1"
-description = "Lazy (delayed) Quick Sort; all storage pre-allocated or array/slice-based; recursive - but later with non-recursive alternative"
+description = "Lazy (delayed) Quick Sort; all storage pre-allocated or slice-based; recursive; but later with non-recursive & no-alloc alternatives"
 keywords = [
 ]
 categories = [
@@ -35,7 +28,7 @@ license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 include.workspace = true
-repository = "https://github.com/scale-rs/lazysort-linear-mem"
+repository = "https://github.com/scale-rs/lazysort-no-alloc"
 authors = ["Peter Kehl <peter.kehl@gmail.com>"]
 
 [package.metadata.docs.rs]
@@ -48,7 +41,7 @@ pre-release-replacements = [
   {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
   {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}", min=1},
   {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n## [Unreleased] - ReleaseDate\n", exactly=1},
-  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/scale-rs/lazysort-linear-mem/compare/{{tag_name}}...HEAD", exactly=1},
+  {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/scale-rs/lazysort-no-alloc/compare/{{tag_name}}...HEAD", exactly=1},
 ]
 
 [features]

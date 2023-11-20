@@ -14,7 +14,9 @@ use calloc::{Allocator, Global};
 use core::{mem, ops::Deref};
 //use cross;
 
+#[cfg(feature = "alloc")]
 pub mod calloc;
+
 mod idx;
 mod store;
 
