@@ -6,6 +6,9 @@ use core::num::{NonZeroU8, NonZeroUsize};
 /// It leverages optimization with [`Option`] for [`NonZeroUsize`], and for some of [`NonZeroU8`],
 /// [`NonZeroU16`]... types. [`Option`] for those types doesn't take any extra space.
 ///
+/// We can use it with non-zero unsigned types (see [Index::max_index_excl_usize()]), because we
+/// (luckily) don't need to use the item at index 0.
+///
 /// However, out of `NonZeroUxyz` types, it's possible to implement it for [`NonZeroUsize`] and only
 /// for [`NonZeroU8`], [`NonZeroU16`]... types that are smaller or same width as [`NonZeroUsize`]
 /// (on a particular platform/target).
@@ -30,11 +33,12 @@ trait Index: Eq + Ord + Sized {
         Self::max_index().to_usize()
     }
     /// Implementation of this function for [`NonZeroUsize`], and for [`NonZeroUxyz`] type whose
-    /// width is the same to that of [`NonZeroUsize`]), is an exception. For any "smaller" types ([`NonZeroU8`]...) it
-    /// can return the max. value of that type. But for [`NonZeroUsize`], and for [`NonZeroUxyz`]
-    /// type whose width is the same to that of [`NonZeroUsize`]), this can return the maximum value
-    /// of that type minus 1. (Because an array/slice max. length is [`usize::MAX`], so any
-    /// index has to be smaller.)
+    /// width is the same to that of [`NonZeroUsize`]), is an exception. For any "smaller" types
+    /// ([`NonZeroU8`]...) it can return the max. value of that type. But for [`NonZeroUsize`], and
+    /// for [`NonZeroUxyz`] type whose width is the same to that of [`NonZeroUsize`]), this CANNOT
+    /// return the max. value of that type. The maximum it can return is the maximum value of that
+    /// type minus 1. (Because an array/slice max. length is [`usize::MAX`], so any index has to be
+    /// smaller.)
     fn max_index() -> Self;
     fn max_indexable_len() -> usize;
 

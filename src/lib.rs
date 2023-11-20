@@ -18,6 +18,8 @@ pub mod calloc;
 mod idx;
 mod store;
 
+mod re;
+
 #[cfg(feature = "alloc")]
 mod lib_vec;
 

@@ -70,6 +70,7 @@ _internal_use_allocator_api = ["nightly_lazy_type_alias", "alloc"]
 # TODO work these two out for alloc/non-alloc, or only for alloc, or incorporate all the time &
 # remove the feature flags themselves
 nightly_guard_cross_alloc   = ["nightly_lazy_type_alias", "_internal_use_allocator_api"]
+
 nightly_guard_cross_cleanup = ["nightly_lazy_type_alias", "nightly_guard_cross_alloc"]
 
 nightly_accept_custom_alloc = ["nightly_lazy_type_alias", "nightly_guard_cross_cleanup"]
