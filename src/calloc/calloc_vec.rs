@@ -7,6 +7,14 @@ use core::marker::PhantomData;
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 use core::ops::{Deref, DerefMut};
 
+// Alternatively, we could apply
+// https://github.com/rust-lang/rfcs/blob/master/text/0213-defaulted-type-params.md BUT it's
+// unstable (behind `#![feature(default_type_parameter_fallback)]`). See
+// https://github.com/rust-lang/rust/issues/27336 - it has been unstable for 8+ years! See also
+// https://faultlore.com/blah/defaults-affect-inference/#solving-hashers-and-allocators-reality-version.
+//
+// But, this would also need a language feature "ignore/allow unused type alias parameter".
+
 //-------- Vec
 /* The following is an alternative to the alias `pub type Vec<T, A: Allocator = Global> = StdVec<T, A>;` (and for the similar alias for VecDeque).
 However, the following still caused the same error.
@@ -20,14 +28,13 @@ mod from_std {
 #[cfg(feature = "_internal_use_allocator_api")]
 pub use from_std::{Vec, VecDeque};
 */
-// `A: Allocator` is required here with #![feature(lazy_type_alias)] ONLY:
 #[cfg(feature = "_internal_use_allocator_api")]
 pub type Vec<T, A: Allocator = Global> = StdVec<T, A>;
 // --
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 #[repr(transparent)]
-pub struct Vec<T, A: Allocator = Global>(StdVec<T>, PhantomData<A>);
+pub struct Vec<T, A: Allocator = Global>(pub StdVec<T>, PhantomData<A>);
 
 #[cfg(not(feature = "_internal_use_allocator_api"))]
 impl<T, A: Allocator> Deref for Vec<T, A> {
@@ -54,7 +61,8 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
 //-------- end of: Vec
 
 //-------- VecDeque
-// `A: Allocator` is required here with #![feature(lazy_type_alias)] ONLY:
+//
+// `A: Allocator` is required here with #![feature(lazy_type_alias)] (our feature nightly_lazy_type_alias) ONLY:
 #[cfg(feature = "_internal_use_allocator_api")]
 pub type VecDeque<T, A: Allocator = Global> = StdVecDeque<T, A>;
 // --
@@ -111,9 +119,12 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
 //-------- end of: VecDeque
 
 // TODO REPORT
-//pub type Vec<T, #[cfg(feature = "_internal_use_allocator_api")] A = Global> = StdVec<T>;
 //
-// pub type Vec<T, #[cfg(feature = "_internal_use_allocator_api")] A = Global> = StdVec<T, #[cfg(feature = "_internal_use_allocator_api")] A>;
+// pub type Vec<T, #[cfg(feature = "_internal_use_allocator_api")] A = Global> =
+//StdVec<T>;
+//
+// pub type Vec<T, #[cfg(feature = "_internal_use_allocator_api")] A = Global> = StdVec<T,
+// #[cfg(feature = "_internal_use_allocator_api")] A>;
 
 struct S<T, #[cfg(feature = "_internal_use_allocator_api")] A = Global> {
     t: T,
